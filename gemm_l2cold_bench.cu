@@ -93,31 +93,6 @@ float run_cublas(cublasHandle_t h, cudaStream_t stream,
 }
 
 // ====== 非同期コピー版（CUTLASSを使う or 自作に差し替え） ======
-#ifdef USE_CUTLASS
-// CUTLASS を使う場合：-DUSE_CUTLASS と include path を通す
-#include "cutlass/cutlass.h"
-#include "cutlass/gemm/device/gemm.h"
-float run_async_kernel(int M,int N,int K, const half* dA,const half* dB, half* dC, cudaStream_t stream){
-  using Gemm = cutlass::gemm::device::Gemm< half, cutlass::layout::RowMajor,
-                                            half, cutlass::layout::RowMajor,
-                                            half,  cutlass::layout::RowMajor,
-                                            float,
-                                            cutlass::arch::OpClassTensorOp,
-                                            cutlass::arch::Sm80>; // cp.asyncを含むSM80用
-  Gemm gemm_op;
-  typename Gemm::Arguments args({M,N,K},
-                                { (cutlass::half_t*)dA, K },
-                                { (cutlass::half_t*)dB, N },
-                                { dC, N },
-                                { dC, N },
-                                {1.0f, 0.0f});
-  auto work = [&](cudaStream_t s){
-    cutlass::Status st = gemm_op(args, s);
-    if(st != cutlass::Status::kSuccess){ fprintf(stderr,"CUTLASS error\n"); exit(1); }
-  };
-  return elapsed_ms(work, stream);
-}
-#else
 size_t initMmaAsyncStage4();
 void mmaAsyncStage4(half *A, half *B, half *C, size_t M, size_t N, size_t K);
 
@@ -134,7 +109,6 @@ float run_async_kernel(int M,int N,int K, half* dA, half* dB, half* dC, cudaStre
   mmaAsyncStage4(dA, dB, dC, M, N, K);
   return timer.end();
 }
-#endif
 
 int main(int argc, char** argv){
   Args a = parse(argc, argv);
@@ -175,12 +149,8 @@ int main(int argc, char** argv){
     cublasHandle_t h; CHECK_CUBLAS(cublasCreate(&h));
     (void)run_cublas(h, stream, 256,256,256, dA,dB,dC);
     CHECK_CUBLAS(cublasDestroy(h));
-#ifdef USE_CUTLASS
-    (void)run_async_kernel(256,256,256, dA,dB,dC, stream);
-#else
     initMmaAsyncStage4(); 
     mmaAsyncStage4(dA, dB, dC, 256, 256, 256);
-#endif
     CHECK_CUDA(cudaStreamSynchronize(stream));
   }
 

@@ -1,35 +1,35 @@
-cmake_minimum_required(VERSION 3.24)  # CUDA_ARCHITECTURES ‚Ì native/all ‚ªg‚¦‚é¢‘ã
+cmake_minimum_required(VERSION 3.24)  # CUDA_ARCHITECTURES ã® native/all ãŒä½¿ãˆã‚‹ä¸–ä»£
 project(MyCudaApp LANGUAGES CXX CUDA)
 
-# --- C++ / CUDA •W€ ---
+# --- C++ / CUDA æ¨™æº– ---
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CUDA_STANDARD 17)
 set(CMAKE_CUDA_STANDARD_REQUIRED ON)
 
-# --- CUDA Toolkit ‚ğŒŸoinvcc / include / libsj---
-find_package(CUDAToolkit REQUIRED)  # CUDA::cudart, CUDA::cublas ‚È‚Ç‚Ìimported target‚ª—pˆÓ‚³‚ê‚é
-#  ^ CMakeŒö®‚Ì„§‚Í FindCUDA(‹Œ) ‚Å‚Í‚È‚­ FindCUDAToolkit(V) :contentReference[oaicite:1]{index=1}
+# --- CUDA Toolkit ã‚’æ¤œå‡ºï¼ˆnvcc / include / libsï¼‰---
+find_package(CUDAToolkit REQUIRED)  # CUDA::cudart, CUDA::cublas ãªã©ã®imported targetãŒç”¨æ„ã•ã‚Œã‚‹
+#  ^ CMakeå…¬å¼ã®æ¨å¥¨ã¯ FindCUDA(æ—§) ã§ã¯ãªã FindCUDAToolkit(æ–°) :contentReference[oaicite:1]{index=1}
 
-# --- Àsƒtƒ@ƒCƒ‹ ---
+# --- å®Ÿè¡Œãƒ•ã‚¡ã‚¤ãƒ« ---
 add_executable(my_cuda_app
     src/main.cpp
     src/kernels.cu
 )
 
-# --- CUDAƒA[ƒLİ’è ---
-# —á1: èŒ³‚ÌGPU‚É‡‚í‚¹‚Ä©“®iCMake 3.24+j
+# --- CUDAã‚¢ãƒ¼ã‚­è¨­å®š ---
+# ä¾‹1: æ‰‹å…ƒã®GPUã«åˆã‚ã›ã¦è‡ªå‹•ï¼ˆCMake 3.24+ï¼‰
 set_property(TARGET my_cuda_app PROPERTY CUDA_ARCHITECTURES native)
-# —á2: –¾¦w’è‚µ‚½‚¢ê‡
+# ä¾‹2: æ˜ç¤ºæŒ‡å®šã—ãŸã„å ´åˆ
 # set_property(TARGET my_cuda_app PROPERTY CUDA_ARCHITECTURES 75 86)
 
-# CUDA_ARCHITECTURES ‚Í‹ó‚¾‚ÆƒGƒ‰[‚É‚È‚é‚Ì‚Å•K‚¸İ’è‚·‚é‚Ì‚ªˆÀ‘S :contentReference[oaicite:2]{index=2}
+# CUDA_ARCHITECTURES ã¯ç©ºã ã¨ã‚¨ãƒ©ãƒ¼ã«ãªã‚‹ã®ã§å¿…ãšè¨­å®šã™ã‚‹ã®ãŒå®‰å…¨ :contentReference[oaicite:2]{index=2}
 
 # --- include dirs ---
-# cuda_fp16.h / cublas_v2.h ‚Í CUDA include ‚É‚ ‚é‚Ì‚ÅACUDAToolkit‚ª‚Âinclude‚ğ’Ç‰Á
+# cuda_fp16.h / cublas_v2.h ã¯ CUDA include ã«ã‚ã‚‹ã®ã§ã€CUDAToolkitãŒæŒã¤includeã‚’è¿½åŠ 
 target_include_directories(my_cuda_app PRIVATE ${CUDAToolkit_INCLUDE_DIRS})
-# ‚à‚µ‚­‚Í target_link_libraries ‚¾‚¯‚Å‚à include ‚ª“`”d‚·‚é\¬‚ª‘½‚¢‚Å‚·‚ªA
-# host‘¤ .cpp ‚Å cuda_fp16.h ‚ğ“Ç‚Ş‚Æ‚«‚Í–¾¦’Ç‰Á‚ªŠmÀ :contentReference[oaicite:3]{index=3}
+# ã‚‚ã—ãã¯ target_link_libraries ã ã‘ã§ã‚‚ include ãŒä¼æ’­ã™ã‚‹æ§‹æˆãŒå¤šã„ã§ã™ãŒã€
+# hostå´ .cpp ã§ cuda_fp16.h ã‚’èª­ã‚€ã¨ãã¯æ˜ç¤ºè¿½åŠ ãŒç¢ºå®Ÿ :contentReference[oaicite:3]{index=3}
 
 # --- link ---
 target_link_libraries(my_cuda_app PRIVATE
@@ -37,15 +37,15 @@ target_link_libraries(my_cuda_app PRIVATE
     CUDA::cublas
 )
 
-# --- CUDAƒRƒ“ƒpƒCƒ‹ƒIƒvƒVƒ‡ƒ“ihalf‚âlambda“™‚ğg‚¤ê‡‚É•Ö—˜j---
+# --- CUDAã‚³ãƒ³ãƒ‘ã‚¤ãƒ«ã‚ªãƒ—ã‚·ãƒ§ãƒ³ï¼ˆhalfã‚„lambdaç­‰ã‚’ä½¿ã†å ´åˆã«ä¾¿åˆ©ï¼‰---
 target_compile_options(my_cuda_app PRIVATE
     $<$<COMPILE_LANGUAGE:CUDA>:--expt-relaxed-constexpr --expt-extended-lambda>
 )
 
-# --- separable compilation ‚ª•K—v‚È‚çONi•¡”cu‚ÉŒ×‚édeviceŒÄ‚Ño‚µ“™j---
+# --- separable compilation ãŒå¿…è¦ãªã‚‰ONï¼ˆè¤‡æ•°cuã«è·¨ã‚‹deviceå‘¼ã³å‡ºã—ç­‰ï¼‰---
 set_target_properties(my_cuda_app PROPERTIES
     CUDA_SEPARABLE_COMPILATION ON
 )
 
-# --- •Ö—˜‚È’è‹`—ái•K—v‚È‚çj ---
+# --- ä¾¿åˆ©ãªå®šç¾©ä¾‹ï¼ˆå¿…è¦ãªã‚‰ï¼‰ ---
 # target_compile_definitions(my_cuda_app PRIVATE CUDA_FP16_ENABLED=1)

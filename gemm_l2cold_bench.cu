@@ -4,6 +4,7 @@
 #include <random>
 #include <cuda_runtime.h>
 #include <cublas_v2.h>
+#include "cuda_timer.h"
 
 #ifndef CHECK_CUDA
 #define CHECK_CUDA(x) do{ cudaError_t e=(x); if(e!=cudaSuccess){ \
@@ -74,7 +75,7 @@ float elapsed_ms(F&& work, cudaStream_t stream){
 
 // ====== cublasGemmEx（Tensor Core） ======
 float run_cublas(cublasHandle_t h, cudaStream_t stream,
-                 int M,int N,int K, const __half* dA,const __half* dB, float* dC){
+                 int M,int N,int K, const __half* dA,const __half* dB, __half* dC){
   CHECK_CUBLAS(cublasSetStream(h, stream));
   const float alpha=1.0f, beta=0.0f;
   auto work = [&](cudaStream_t s){
@@ -99,7 +100,7 @@ float run_cublas(cublasHandle_t h, cudaStream_t stream,
 float run_async_kernel(int M,int N,int K, const __half* dA,const __half* dB, float* dC, cudaStream_t stream){
   using Gemm = cutlass::gemm::device::Gemm< __half, cutlass::layout::RowMajor,
                                             __half, cutlass::layout::RowMajor,
-                                            float,  cutlass::layout::RowMajor,
+                                            __half,  cutlass::layout::RowMajor,
                                             float,
                                             cutlass::arch::OpClassTensorOp,
                                             cutlass::arch::Sm80>; // cp.asyncを含むSM80用
@@ -117,14 +118,21 @@ float run_async_kernel(int M,int N,int K, const __half* dA,const __half* dB, flo
   return elapsed_ms(work, stream);
 }
 #else
+size_t initMmaAsyncStage4();
+void mmaAsyncStage4(half *A, half *B, half *C, size_t M, size_t N, size_t K);
+
 // 自作カーネルを後で入れる場合のダミー（いまは cublas と同等にしておく）
-float run_async_kernel(int M,int N,int K, const __half* dA,const __half* dB, float* dC, cudaStream_t stream){
+float run_async_kernel(int M,int N,int K, const __half* dA,const __half* dB, __half* dC, cudaStream_t stream){
   // TODO: ここに cp.async + wmma のカーネルを実装
   // ひとまず比較が回るようにcublas版を呼ぶ（差し替えポイント）
-  cublasHandle_t h; CHECK_CUBLAS(cublasCreate(&h));
-  float ms = run_cublas(h, stream, M,N,K, dA,dB,dC);
-  CHECK_CUBLAS(cublasDestroy(h));
-  return ms;
+  //cublasHandle_t h; CHECK_CUBLAS(cublasCreate(&h));
+  //auto work = [&](cudaStream_t s){
+  //  float ms = run_cublas(h, stream, M,N,K, dA,dB,dC);
+  //CHECK_CUBLAS(cublasDestroy(h));
+  CudaTimer timer;
+  timer.start();
+
+  return timer.end();
 }
 #endif
 
@@ -147,8 +155,8 @@ int main(int argc, char** argv){
   // メモリ確保
   size_t bytesA = (size_t)a.M*a.K*sizeof(__half);
   size_t bytesB = (size_t)a.K*a.N*sizeof(__half);
-  size_t bytesC = (size_t)a.M*a.N*sizeof(float);
-  __half *dA, *dB; float *dC;
+  size_t bytesC = (size_t)a.M*a.N*sizeof(__half);
+  __half *dA, *dB, *dC;
   CHECK_CUDA(cudaMalloc(&dA, bytesA));
   CHECK_CUDA(cudaMalloc(&dB, bytesB));
   CHECK_CUDA(cudaMalloc(&dC, bytesC));
@@ -169,6 +177,9 @@ int main(int argc, char** argv){
     CHECK_CUBLAS(cublasDestroy(h));
 #ifdef USE_CUTLASS
     (void)run_async_kernel(256,256,256, dA,dB,dC, stream);
+#else
+    initMmaAsyncStage4(); 
+    mmaAsyncStage4(dA, dB, dC, 256, 256, 256);
 #endif
     CHECK_CUDA(cudaStreamSynchronize(stream));
   }

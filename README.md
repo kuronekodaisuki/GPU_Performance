@@ -5,7 +5,10 @@ Tensor Coreの最適化実験。
 git cloneの後
 
 mkdir build
+
 cd build
+
 cmake ..
+
 make
 

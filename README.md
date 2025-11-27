@@ -4,11 +4,15 @@ Tensor Coreの最適化実験。
 
 git cloneの後
 
-mkdir build
+>mkdir build
 
-cd build
+>cd build
 
-cmake ..
+>cmake ..
 
-make
+>make
+
+>./bench --mode cublas
+
+>./bench --mode async
 

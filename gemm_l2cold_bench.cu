@@ -4,7 +4,32 @@
 #include <random>
 #include <cuda_runtime.h>
 #include <cublas_v2.h>
+#include <string>
+#ifdef _WIN32
+#include <Windows.h>
+class CudaTimer
+{
+public:
+    void start() { QueryPerformanceCounter(&_start); };
+    float end()
+    {
+        QueryPerformanceCounter(&_end);
+        return interval();
+    };
+
+private:
+    LARGE_INTEGER _freq, _start, _end;
+    float interval()
+    {
+        QueryPerformanceFrequency(&_freq);
+        int64_t elapsedMicroseconds = (_end.QuadPart - _start.QuadPart) * 1000000 / _freq.QuadPart;
+        return static_cast<float>(elapsedMicroseconds) / 1000.0;
+    }
+};
+#else
 #include "cuda_timer.h"
+#endif
+
 
 #ifndef CHECK_CUDA
 #define CHECK_CUDA(x) do{ cudaError_t e=(x); if(e!=cudaSuccess){ \

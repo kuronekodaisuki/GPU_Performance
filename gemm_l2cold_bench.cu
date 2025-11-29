@@ -118,6 +118,7 @@ float run_cublas(cublasHandle_t h, cudaStream_t stream,
 }
 
 // ====== 非同期コピー版（CUTLASSを使う or 自作に差し替え） ======
+#ifndef _WIN32
 size_t initMmaAsyncStage4();
 void mmaAsyncStage4(half *A, half *B, half *C, size_t M, size_t N, size_t K);
 
@@ -134,6 +135,7 @@ float run_async_kernel(int M,int N,int K, half* dA, half* dB, half* dC, cudaStre
   mmaAsyncStage4(dA, dB, dC, M, N, K);
   return timer.end();
 }
+#endif
 
 int main(int argc, char** argv){
   Args a = parse(argc, argv);
@@ -174,8 +176,10 @@ int main(int argc, char** argv){
     cublasHandle_t h; CHECK_CUBLAS(cublasCreate(&h));
     (void)run_cublas(h, stream, 256,256,256, dA,dB,dC);
     CHECK_CUBLAS(cublasDestroy(h));
-    initMmaAsyncStage4(); 
+#ifndef _WIN32
+    initMmaAsyncStage4();
     mmaAsyncStage4(dA, dB, dC, 256, 256, 256);
+#endif // !_WIN32
     CHECK_CUDA(cudaStreamSynchronize(stream));
   }
 
@@ -193,9 +197,12 @@ int main(int argc, char** argv){
       cublasHandle_t h; CHECK_CUBLAS(cublasCreate(&h));
       ms = run_cublas(h, stream, a.M,a.N,a.K, dA,dB,dC);
       CHECK_CUBLAS(cublasDestroy(h));
-    }else{
+    }
+#ifndef _WIN32
+    else{
       ms = run_async_kernel(a.M,a.N,a.K, dA,dB,dC, stream);
     }
+#endif
     times.push_back(ms);
     printf("trial %d: %.3f ms  (%.2f TFLOP/s)\n", t, ms, (float)(flops/ms/1e9));
     CHECK_CUDA(cudaMemsetAsync(dC, 0, bytesC, stream));
